@@ -1,0 +1,68 @@
+{{- if and .Values.k6 (hasKey .Values.k6 "enabled") (eq .Values.k6.enabled true) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: react-demo-loadtest-script
+  namespace: testing
+data:
+  script.js: |
+    import http from "k6/http";
+    import { Counter } from 'k6/metrics';
+
+    const checkPass = new Counter('check_pass');
+    const checkFail = new Counter('check_fail');
+
+    const CHECKS = {
+      "response status 200": (res, jsonRes) => res.status === 200,
+      "response has data": (res, jsonRes) => jsonRes && Object.keys(jsonRes).length > 0,
+    };
+
+    export function setup() {
+      for (const checkName of Object.keys(CHECKS)) {
+        checkPass.add(0, { check: checkName });
+        checkFail.add(0, { check: checkName });
+      }
+    }
+
+    const APP_URL = `${__ENV.APP_URL}`
+    const APP_TOKEN = `${__ENV.APP_TOKEN}`
+
+    export const options = {
+      stages: [
+          { duration: '10m', target: 200 }, // traffic ramp-up from 1 to a higher 200 users over 10 minutes.
+          { duration: '30m', target: 200 }, // stay at higher 200 users for 30 minutes
+          { duration: '5m', target: 0 }, // ramp-down to 0 users
+      ],
+    };
+
+    export default function () {
+      const counter = Math.floor(Math.random() * 1e3) + 1;
+      const url = `${APP_URL}/api/counter/increment`;
+      const payload = JSON.stringify({
+        counter,
+      });
+      const params = {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${APP_TOKEN}`,
+        },
+        redirects: 0,
+      };
+      const res = http.post(url, payload, params);
+      let jsonRes;
+      try {
+        jsonRes = res.json();
+      } catch (e) {
+        jsonRes = {};
+      }
+
+      for (const [checkName, checkFn] of Object.entries(CHECKS)) {
+        const passed = checkFn(res, jsonRes);
+        if (passed) {
+          checkPass.add(1, { check: checkName });
+        } else {
+          checkFail.add(1, { check: checkName });
+        }
+      }
+    }
+{{- end }}
