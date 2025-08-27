@@ -2,7 +2,7 @@
 apiVersion: k6.io/v1alpha1
 kind: TestRun
 metadata:
-  name: react-demo-loadtest
+  name: react-demo-loadtest-1
   namespace: testing
   annotations:
     argocd.argoproj.io/hook: PostSync
