@@ -4,6 +4,9 @@ kind: TestRun
 metadata:
   name: react-demo-loadtest
   namespace: testing
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded, HookFailed
 spec:
   script:
     configMap:
