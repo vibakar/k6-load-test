@@ -6,7 +6,7 @@ metadata:
   namespace: testing
   annotations:
     argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: HookSucceeded, HookFailed
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
 spec:
   script:
     configMap:
@@ -29,5 +29,4 @@ spec:
     envFrom:
       - secretRef:
           name: react-demo-app-secret
-  cleanup: post
 {{- end }}
