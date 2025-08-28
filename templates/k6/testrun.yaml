@@ -2,12 +2,11 @@
 apiVersion: k6.io/v1alpha1
 kind: TestRun
 metadata:
-  name: react-demo-loadtest-20250828-1
+  name: react-demo-k6-loadtest
   namespace: testing
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: HookSucceeded
-    runTriggeredAt: "2025-08-28T14:20:00Z"
 spec:
   script:
     configMap:
