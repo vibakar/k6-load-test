@@ -30,4 +30,5 @@ spec:
     envFrom:
       - secretRef:
           name: react-demo-app-secret
+  cleanup: false
 {{- end }}
