@@ -1,4 +1,4 @@
-{{- if and .Values.k6 (hasKey .Values.k6 "enabled") (eq .Values.k6.enabled true) }}
+{{- if and .Values.k6.enabled (eq .Values.k6.enabled true) }}
 apiVersion: k6.io/v1alpha1
 kind: TestRun
 metadata:
