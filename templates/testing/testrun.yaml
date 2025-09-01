@@ -27,6 +27,6 @@ spec:
         value: "k6_"
     envFrom:
       - secretRef:
-          name: react-demo-app-secret
+          name: react-demo-bearer-token
   cleanup: post
 {{- end }}
