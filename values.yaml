@@ -1,2 +1,5 @@
-k6:
+app:
   enabled: true
+
+k6:
+  enabled: false

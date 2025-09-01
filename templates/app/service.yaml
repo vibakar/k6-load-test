@@ -1,0 +1,16 @@
+{{- if and .Values.app.enabled (eq .Values.app.enabled true) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  labels:
+    app: nginx
+spec:
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+{{- end }}
