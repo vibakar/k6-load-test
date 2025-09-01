@@ -28,5 +28,4 @@ spec:
     envFrom:
       - secretRef:
           name: react-demo-bearer-token
-  cleanup: post
 {{- end }}
