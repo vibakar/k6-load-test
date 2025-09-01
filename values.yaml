@@ -1,5 +1,6 @@
 app:
   enabled: true
-
+  nginx:
+    tag: 1.25.3
 k6:
   enabled: false
