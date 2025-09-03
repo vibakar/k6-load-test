@@ -21,4 +21,6 @@ spec:
           image: {{ .Values.app.nginx.image }}:{{ .Values.app.nginx.tag }}
           ports:
             - containerPort: 80
+      imagePullSecrets:
+        - name: regcred
 {{- end }}
