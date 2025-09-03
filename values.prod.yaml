@@ -1,5 +1,6 @@
 app:
   enabled: true
+  namespace: prod
   nginx:
     image: vibakar/nginx
     tag: 1.29.20
