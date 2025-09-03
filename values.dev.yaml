@@ -5,4 +5,4 @@ app:
     image: vibakar/nginx
     tag: 1.29.25
 k6:
-  enabled: false
+  enabled: true
