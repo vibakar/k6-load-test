@@ -3,6 +3,6 @@ app:
   namespace: dev
   nginx:
     image: vibakar/nginx
-    tag: 1.29.26
+    tag: 1.29.27
 k6:
   enabled: true
