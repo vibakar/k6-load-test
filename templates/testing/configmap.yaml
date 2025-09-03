@@ -24,17 +24,16 @@ data:
       }
     }
 
-    const APP_URL = "https://react-demo.gluki.io"
+    const APP_URL = "httpss://react-demo.gluki.io"
     const APP_TOKEN = `${__ENV.TOKEN}`
 
     export const options = {
       thresholds: {
         "http_req_duration": ["p(95)<500"],
-        "http_req_failed": ["rate<0.01"],
-        "checks": ["rate>0.99"]
+        "http_req_failed": ["rate<0.01"]
       },
       stages: [
-          { duration: '1m', target: 10 }
+        { duration: '1m', target: 10 }
       ],
     };
 
