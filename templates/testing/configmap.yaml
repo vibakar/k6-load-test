@@ -24,7 +24,7 @@ data:
       }
     }
 
-    const APP_URL = "httpss://react-demo.gluki.io"
+    const APP_URL = "https://react-demo.gluki.io"
     const APP_TOKEN = `${__ENV.TOKEN}`
 
     export const options = {
