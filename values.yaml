@@ -2,6 +2,6 @@ app:
   enabled: true
   nginx:
     image: vibakar/nginx
-    tag: 1.29.22
+    tag: 1.29.23
 k6:
   enabled: false
