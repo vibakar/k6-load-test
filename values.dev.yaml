@@ -1,6 +1,6 @@
 app:
   enabled: true
-  namespace: dev
+  namespace: react-demo
   nginx:
     image: vibakar/nginx
     tag: 1.29.28

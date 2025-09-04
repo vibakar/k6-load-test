@@ -4,4 +4,4 @@ kind: Namespace
 metadata:
   labels:
     kargo.akuity.io/project: "true"
-  name: my-project
+  name: { { .Values.app.namespace } }
