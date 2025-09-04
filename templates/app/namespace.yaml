@@ -1,7 +1,9 @@
+{{- if and .Values.app.enabled (eq .Values.app.enabled true) }}
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
   labels:
     kargo.akuity.io/project: "true"
-  name: { { .Values.app.namespace } }
+  name: {{ .Values.app.namespace }}
+{{-end}}
