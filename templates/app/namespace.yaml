@@ -6,4 +6,4 @@ metadata:
   labels:
     kargo.akuity.io/project: "true"
   name: {{ .Values.app.namespace }}
-{{-end}}
+{{- end }}
