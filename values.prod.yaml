@@ -1,6 +1,6 @@
 app:
   enabled: true
-  namespace: prod
+  namespace: react-demo-prod
   nginx:
     image: vibakar/nginx
     tag: 1.29.25
