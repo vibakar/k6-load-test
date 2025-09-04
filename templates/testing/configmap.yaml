@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: react-demo-loadtest-script
+  name: nginx-loadtest-script
   namespace: {{ .Values.app.namespace }}
 data:
   script.js: |
