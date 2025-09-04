@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: k6-runner
-  namespace: my-project
+  namespace: {{ .Values.app.namespace }}
 ---
 apiVersion: v1
 kind: Secret
@@ -18,7 +18,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: k6-runner
-  namespace: my-project
+  namespace: {{ .Values.app.namespace }}
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
@@ -31,7 +31,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: k6-runner
-  namespace: my-project
+  namespace: {{ .Values.app.namespace }}
 subjects:
   - kind: ServiceAccount
     name: k6-runner
