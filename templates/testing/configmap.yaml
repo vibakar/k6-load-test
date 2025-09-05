@@ -29,8 +29,7 @@ data:
 
     export const options = {
       stages: [
-        { duration: '5m', target: 20 }, // traffic ramp-up from 1 to 20 users over 5 minutes.
-        { duration: '5m', target: 20 }, // stay at 20 users for 5 minutes
+        { duration: '5m', target: 3 }, // traffic ramp-up from 1 to 3 users over 5 minutes.
       ],
     };
 
