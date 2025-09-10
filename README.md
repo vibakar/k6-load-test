@@ -1,3 +1,5 @@
+# k6 load test
+
 This repository contains a simple Helm chart to deploy an NGINX application, along with the resources required to run [k6](https://k6.io/) load testing. The chart and configuration files are designed to work in a Kubernetes environment with tools like ArgoCD, Kargo, Vault, and observability stacks.
 
 ---
