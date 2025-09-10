@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nginx-prod
+  namespace: argocd
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app: nginx-prod
+  annotations:
+    kargo.akuity.io/authorized-stage: nginx:prod
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/vibakar/k6-load-test.git
+    targetRevision: main
+    path: chart
+    helm:
+      valueFiles:
+        - values.prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

@@ -1,0 +1,322 @@
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: nginx
+  annotations:
+    kargo.akuity.io/keep-namespace: "true"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dockerhub-creds
+  namespace: nginx
+  labels:
+    kargo.akuity.io/cred-type: image
+stringData:
+  repoURL: docker.io/vibakar/nginx
+  username: vibakar
+  password: xxx
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: git-creds
+  namespace: nginx
+  labels:
+    kargo.akuity.io/cred-type: git
+stringData:
+  repoURL: https://github.com/vibakar/k6-load-test.git
+  username: vibakar
+  password: xxx
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: nginx
+  namespace: nginx
+spec:
+  promotionPolicies:
+    - autoPromotionEnabled: true
+      stageSelector:
+        name: dev
+    - autoPromotionEnabled: true
+      stageSelector:
+        name: prod
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: nginx-warehouse
+  namespace: nginx
+spec:
+  interval: 1m0s
+  subscriptions:
+    - image:
+        repoURL: docker.io/vibakar/nginx
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ClusterPromotionTask
+metadata:
+  name: promote
+spec:
+  steps:
+    - config:
+        checkout:
+          - branch: ${{ vars.branch }}
+            path: ./src
+        repoURL: ${{ vars.repoURL }}
+      uses: git-clone
+    - as: update-image
+      config:
+        path: ./src/values.${{ vars.environment }}.yaml
+        updates:
+          - key: ${{ vars.helmImageTag }}
+            value: ${{ imageFrom( vars.image ).Tag }}
+      uses: yaml-update
+    - as: commit
+      config:
+        message: "[skip ci] - ${{ task.outputs['update-image'].commitMessage }}"
+        path: ./src
+      uses: git-commit
+    - config:
+        path: ./src
+      uses: git-push
+    - config:
+        apps:
+          - name: ${{ vars.argocdApp }}
+      uses: argocd-update
+  vars:
+    - name: image
+    - name: environment
+    - name: repoURL
+    - name: branch
+    - name: helmImageTag
+    - name: argocdApp
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: dev
+  namespace: nginx
+  annotations:
+    kargo.akuity.io/color: green
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: nginx-warehouse
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      steps:
+        - task:
+            kind: ClusterPromotionTask
+            name: promote
+          vars:
+            - name: image
+              value: docker.io/vibakar/nginx
+            - name: repoURL
+              value: https://github.com/vibakar/k6-load-test.git
+            - name: branch
+              value: main
+            - name: environment
+              value: dev
+            - name: helmImageTag
+              value: app.nginx.tag
+            - name: argocdApp
+              value: nginx-dev
+  verification:
+    analysisTemplates:
+      - name: run-load-test
+      - name: verify-load-test
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: prod
+  namespace: nginx
+  annotations:
+    kargo.akuity.io/color: blue
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: nginx-warehouse
+      sources:
+        stages:
+          - dev
+  promotionTemplate:
+    spec:
+      steps:
+        - task:
+            kind: ClusterPromotionTask
+            name: promote
+          vars:
+            - name: image
+              value: docker.io/vibakar/nginx
+            - name: repoURL
+              value: https://github.com/vibakar/k6-load-test.git
+            - name: branch
+              value: main
+            - name: environment
+              value: prod
+            - name: helmImageTag
+              value: app.nginx.tag
+            - name: argocdApp
+              value: nginx-prod
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: run-load-test
+  namespace: nginx
+spec:
+  metrics:
+    - name: load-test
+      provider:
+        job:
+          spec:
+            backoffLimit: 1
+            template:
+              spec:
+                serviceAccountName: k6-runner
+                restartPolicy: Never
+                containers:
+                  - name: k6-runner
+                    image: alpine/k8s:1.34.0
+                    imagePullPolicy: IfNotPresent
+                    command: ["/bin/bash", "-c"]
+                    args:
+                      - |
+                        set -e
+
+                        KEYCLOAK_TOKEN_URL="https://identity.agora.gluki.io/realms/gluki/protocol/openid-connect/token"
+                        K8S_NAMESPACE="nginx"
+                        LOADTEST_SCRIPT_CONFIG_MAP_NAME="nginx-loadtest-script"
+                        LOADTEST_TEST_ID="nginx"
+                        LOADTEST_TOKEN_SECRET_NAME="nginx-bearer-token"
+                        SA_TOKEN_PATH="/var/run/secrets/kubernetes.io/serviceaccount/token"
+                        TESTRUN_NAME="nginx-loadtest"
+                        VAULT_ADDR="http://vault.vault.svc:8200"
+                        VAULT_AUTH_ROLE="demo-role"
+                        VAULT_SECRET_PATH="v1/kv2/data/react-demo-svc-client"
+
+                        echo "[*] Reading Kubernetes service account token..."
+                        JWT_TOKEN=$(cat "$SA_TOKEN_PATH")
+                        echo "[*] JWT token read successfully."
+
+                        echo "[*] Logging into Vault with Kubernetes auth..."
+                        LOGIN_RESPONSE=$(curl --silent --request POST \
+                          --data "{\"jwt\": \"${JWT_TOKEN}\", \"role\": \"${VAULT_AUTH_ROLE}\"}" \
+                          "$VAULT_ADDR/v1/auth/kubernetes/login")
+
+                        VAULT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.auth.client_token')
+                        echo "[*] Vault token acquired."
+
+                        echo "[*] Fetching secrets from Vault..."
+                        SECRET_RESPONSE=$(curl --silent \
+                          --header "X-Vault-Token: ${VAULT_TOKEN}" \
+                          "${VAULT_ADDR}/${VAULT_SECRET_PATH}")
+
+                        client_id=$(echo "${SECRET_RESPONSE}" | jq -r '.data.data["client-id"]')
+                        client_secret=$(echo "${SECRET_RESPONSE}" | jq -r '.data.data["client-secret"]')
+
+                        echo "[*] Retrieved client_id: ${client_id}"
+                        echo "[*] Retrieved client_secret: ****** (hidden for safety)"
+
+                        echo "[*] Requesting access token from Keycloak..."
+                        TOKEN_RESPONSE=$(curl --silent --show-error --fail \
+                          -X POST "${KEYCLOAK_TOKEN_URL}" \
+                          -H "Content-Type: application/x-www-form-urlencoded" \
+                          --data-urlencode "grant_type=client_credentials" \
+                          --data-urlencode "client_id=${client_id}" \
+                          --data-urlencode "client_secret=${client_secret}")
+
+                        if echo "${TOKEN_RESPONSE}" | jq -e .access_token >/dev/null; then
+                          access_token=$(echo "${TOKEN_RESPONSE}" | jq -r '.access_token')
+                          echo "[*] Access token extracted successfully."
+                        else
+                          echo "[!] Failed to parse access_token from response. Here's the response:"
+                          echo "${TOKEN_RESPONSE}"
+                          exit 1
+                        fi
+
+                        # Extract the access_token from the response
+                        access_token=$(echo "${TOKEN_RESPONSE}" | jq -r '.access_token')
+
+                        echo "[*] Checking if secret already exists..."
+                        if kubectl get secret "${LOADTEST_TOKEN_SECRET_NAME}" -n "${K8S_NAMESPACE}" >/dev/null 2>&1; then
+                          echo "[*] Deleting secret: '${LOADTEST_TOKEN_SECRET_NAME}'"
+                          kubectl delete secret "${LOADTEST_TOKEN_SECRET_NAME}" --namespace "${K8S_NAMESPACE}"
+                        fi
+
+                        echo "[*] Creating secret '${LOADTEST_TOKEN_SECRET_NAME}'..."
+                        kubectl create secret generic "${LOADTEST_TOKEN_SECRET_NAME}" \
+                          --from-literal=TOKEN="${access_token}" \
+                          --namespace "${K8S_NAMESPACE}"
+                        echo "[*] ${LOADTEST_TOKEN_SECRET_NAME} secret created successfully."
+
+                        echo "Applying K6 TestRun"
+
+                        kubectl apply -f - <<EOF
+                        apiVersion: k6.io/v1alpha1
+                        kind: TestRun
+                        metadata:
+                          name: ${TESTRUN_NAME}
+                          namespace: ${K8S_NAMESPACE}
+                        spec:
+                          script:
+                            configMap:
+                              name: ${LOADTEST_SCRIPT_CONFIG_MAP_NAME}
+                              file: script.js
+                          parallelism: 3
+                          arguments: -o experimental-opentelemetry --tag testid=${LOADTEST_TEST_ID}
+                          runner:
+                            env:
+                              - name: K6_OTEL_EXPORTER_TYPE
+                                value: "grpc"
+                              - name: K6_OTEL_GRPC_EXPORTER_INSECURE
+                                value: "true"
+                              - name: K6_OTEL_GRPC_EXPORTER_ENDPOINT
+                                value: "otel-collector.monitoring.svc.cluster.local:4317"
+                              - name: K6_OTEL_SERVICE_NAME
+                                value: "k6-load-test"
+                              - name: K6_OTEL_METRIC_PREFIX
+                                value: "k6_"
+                            envFrom:
+                              - secretRef:
+                                  name: ${LOADTEST_TOKEN_SECRET_NAME}
+                          cleanup: post
+                        EOF
+
+                        echo "K6 TestRun applied successfully!"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: verify-load-test
+  namespace: nginx
+spec:
+  metrics:
+    - name: success-rate
+      initialDelay: 60s
+      interval: 30s
+      count: 10
+      inconclusiveLimit: 2
+      successCondition: result > 0.95
+      failureCondition: result < 0.90
+      provider:
+        prometheus:
+          address: "http://kube-prometheus-stack-prometheus.monitoring.svc:9090"
+          query: |
+            scalar(
+              sum(rate(k6_check_pass_total{check="response has data", testid="nginx"}[1m]))
+              /
+              clamp_min(
+                sum(rate(k6_check_pass_total{check="response has data", testid="nginx"}[1m])) +
+                sum(rate(k6_check_fail_total{check="response has data", testid="nginx"}[1m])),
+                1e-6
+              )
+            )
