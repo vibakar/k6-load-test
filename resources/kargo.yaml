@@ -69,7 +69,7 @@ spec:
       uses: git-clone
     - as: update-image
       config:
-        path: ./src/values.${{ vars.environment }}.yaml
+        path: ./src/chart/values.${{ vars.environment }}.yaml
         updates:
           - key: ${{ vars.helmImageTag }}
             value: ${{ imageFrom( vars.image ).Tag }}
